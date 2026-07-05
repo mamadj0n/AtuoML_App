@@ -15,21 +15,30 @@ if get_data is not None:
 
     task = st.selectbox("Select Task", ["Clustering", "Regression", "Classification"])
 
-# ------------------ CLUSTERING TASK ------------------
+    # ------------------ CLUSTERING TASK ------------------
     if task == "Clustering":
+        # در نسخه 3.x کلاسترینگ متد compare_models ندارد، پس کاربر باید مدل را انتخاب کند
+        model_type = st.selectbox(
+            "Select Clustering Algorithm",
+            ["kmeans", "ap", "meanshift", "sc", "hclust", "dbscan"],
+        )
+        num_clusters = st.slider(
+            "Number of Clusters", min_value=2, max_value=10, value=4
+        )
+
         if st.button("Run Clustering"):
-            st.write("Analyzing and comparing clustering models... Please wait.")
+            st.write("Training clustering model... Please wait.")
             
-            # اصلاح: پاس دادن دیتابیس به صورت آرگومان نام‌دار data
-            exp = ClusteringExperiment().fit(data=df)
-            
-            compare_result = exp.compare_models() 
-            
-            st.write("### Best Clustering Pipeline:")
-            st.write(compare_result.best)
-            
-            st.write("### Leaderboard:")
-            st.dataframe(compare_result.leaderboard)
+            exp = ClusteringExperiment()
+            exp.setup(data=df, html=False) # استفاده از setup به سبک نسخه 3.x
+
+            model = exp.create_model(model_type, num_clusters=num_clusters)
+            st.write("### Model Summary:")
+            st.write(model)
+
+            st.write("### Data with Cluster Labels:")
+            clustered_df = exp.assign_model(model)
+            st.dataframe(clustered_df.head())
 
     # ------------------ REGRESSION TASK ------------------
     elif task == "Regression":
@@ -38,16 +47,17 @@ if get_data is not None:
         if st.button("Run Regression"):
             st.write("Training and comparing regression models... Please wait.")
             
-            # اصلاح: مشخص کردن صریح دیتابیس با data=df
-            exp = RegressionExperiment(target=target_column).fit(data=df)
+            exp = RegressionExperiment()
+            exp.setup(data=df, target=target_column, html=False) # بدون پارامتر silent
             
-            compare_result = exp.compare_models()
+            best_model = exp.compare_models()
             
             st.write("### Best Regression Model:")
-            st.write(compare_result.best)
+            st.write(best_model)
             
+            # در نسخه 3.x برای دریافت جدول مقایسه از pull استفاده می‌کنیم
             st.write("### Leaderboard:")
-            st.dataframe(compare_result.leaderboard)
+            st.dataframe(exp.pull())
 
     # ------------------ CLASSIFICATION TASK ------------------
     elif task == "Classification":
@@ -56,15 +66,13 @@ if get_data is not None:
         if st.button("Run Classification"):
             st.write("Training and comparing classification models... Please wait.")
             
-            # اصلاح: مشخص کردن صریح دیتابیس با data=df
-            exp = ClassificationExperiment(target=target_column).fit(data=df)
+            exp = ClassificationExperiment()
+            exp.setup(data=df, target=target_column, html=False)
             
-            compare_result = exp.compare_models()
+            best_model = exp.compare_models()
             
             st.write("### Best Classification Model:")
-            st.write(compare_result.best)
+            st.write(best_model)
             
             st.write("### Leaderboard:")
-            st.dataframe(compare_result.leaderboard)
-            st.write("### Leaderboard:")
-            st.dataframe(compare_result.leaderboard)
+            st.dataframe(exp.pull())
