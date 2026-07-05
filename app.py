@@ -15,20 +15,19 @@ if get_data is not None:
 
     task = st.selectbox("Select Task", ["Clustering", "Regression", "Classification"])
 
-    # ------------------ CLUSTERING TASK ------------------
+# ------------------ CLUSTERING TASK ------------------
     if task == "Clustering":
         if st.button("Run Clustering"):
             st.write("Analyzing and comparing clustering models... Please wait.")
-
-            # در پایکارت ۴، تنظیمات با چسباندن .fit() به سازنده کلاس انجام می‌شود
-            exp = ClusteringExperiment().fit(df)
-
-            # طبق داکیومنت نسخه ۴، متد compare_models برای همه تسک‌ها یکسان است
-            compare_result = exp.compare_models()
-
+            
+            # اصلاح: پاس دادن دیتابیس به صورت آرگومان نام‌دار data
+            exp = ClusteringExperiment().fit(data=df)
+            
+            compare_result = exp.compare_models() 
+            
             st.write("### Best Clustering Pipeline:")
-            st.write(compare_result.best)  # گرفتن پایپ‌لاین بهینه از فیلد best
-
+            st.write(compare_result.best)
+            
             st.write("### Leaderboard:")
             st.dataframe(compare_result.leaderboard)
 
@@ -38,16 +37,15 @@ if get_data is not None:
 
         if st.button("Run Regression"):
             st.write("Training and comparing regression models... Please wait.")
-
-            # تعیین تارگت و فیت کردن اولیه دیتابیس در سازنده کلاس
-            exp = RegressionExperiment(target=target_column).fit(df)
-
-            # اجرای مقایسه مدل‌ها
+            
+            # اصلاح: مشخص کردن صریح دیتابیس با data=df
+            exp = RegressionExperiment(target=target_column).fit(data=df)
+            
             compare_result = exp.compare_models()
-
+            
             st.write("### Best Regression Model:")
             st.write(compare_result.best)
-
+            
             st.write("### Leaderboard:")
             st.dataframe(compare_result.leaderboard)
 
@@ -57,14 +55,16 @@ if get_data is not None:
 
         if st.button("Run Classification"):
             st.write("Training and comparing classification models... Please wait.")
-
-            # ساخت آزمایش طبق ساختار جدید پایکارت ۴
-            exp = ClassificationExperiment(target=target_column).fit(df)
-
+            
+            # اصلاح: مشخص کردن صریح دیتابیس با data=df
+            exp = ClassificationExperiment(target=target_column).fit(data=df)
+            
             compare_result = exp.compare_models()
-
+            
             st.write("### Best Classification Model:")
             st.write(compare_result.best)
-
+            
+            st.write("### Leaderboard:")
+            st.dataframe(compare_result.leaderboard)
             st.write("### Leaderboard:")
             st.dataframe(compare_result.leaderboard)
