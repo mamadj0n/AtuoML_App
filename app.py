@@ -255,9 +255,6 @@ if get_data is not None:
                         target=target_column,
                         fh=forecast_period,
                         fold=cv_folds,
-                        # در نسخه 3.3 از data_split به جای train_size استفاده می‌شود
-                        data_split=forecast_period,  # تعداد نقاط برای تست
-                        # یا می‌توانید از train_size استفاده کنید
                         # train_size=train_size,
                         seasonal_period=seasonal_period,
                         session_id=random_state,
