@@ -210,7 +210,8 @@ if get_data is not None:
             )
         
         with col3:
-            train_test_split = st.slider(
+            # تبدیل train_test_split به عددی که برای data_split استفاده می‌شود
+            train_split = st.slider(
                 "Train Ratio",
                 min_value=0.5,
                 max_value=0.95,
@@ -240,16 +241,28 @@ if get_data is not None:
                     df_ts[date_column] = pd.to_datetime(df_ts[date_column])
                     df_ts = df_ts.sort_values(by=date_column).reset_index(drop=True)
                     
-                    # مراحل setup
+                    # برای PyCaret 3.3 - پارامتر train_size با data_split و train_size جایگزین شده است
+                    # همچنین باید توجه داشته باشید که در نسخه‌های جدید، 
+                    # باید از پارامترهای زیر استفاده کنید
                     exp = TSForecastingExperiment()
+                    
+                    # محاسبه train_size بر اساس نسبت
+                    train_size = int(len(df_ts) * train_split)
+                    
+                    # تنظیم setup با پارامترهای صحیح
                     exp.setup(
                         data=df_ts,
                         target=target_column,
                         fh=forecast_period,
                         fold=cv_folds,
-                        train_size=train_test_split,
+                        # در نسخه 3.3 از data_split به جای train_size استفاده می‌شود
+                        data_split=forecast_period,  # تعداد نقاط برای تست
+                        # یا می‌توانید از train_size استفاده کنید
+                        # train_size=train_size,
                         seasonal_period=seasonal_period,
-                        html=False
+                        session_id=random_state,
+                        html=False,
+                        verbose=False
                     )
                     
                     st.info("🔄 Comparing models...")
@@ -269,13 +282,23 @@ if get_data is not None:
                     
                     with col2:
                         st.write("### Model Performance:")
-                        metrics = exp.pull()
-                        st.metric("MAE", f"{metrics.iloc[0]['MAE']:.4f}")
+                        if not leaderboard.empty:
+                            # دریافت بهترین متریک - معمولاً MAE
+                            metrics_df = leaderboard.iloc[0]
+                            if 'MAE' in metrics_df.index:
+                                st.metric("MAE", f"{metrics_df['MAE']:.4f}")
+                            elif 'mae' in metrics_df.index:
+                                st.metric("MAE", f"{metrics_df['mae']:.4f}")
                     
                     # Forecast
                     st.write("### Forecast Results:")
                     forecast = exp.predict_model(best_model)
-                    st.dataframe(forecast)
+                    
+                    # نمایش پیش‌بینی‌ها
+                    if isinstance(forecast, pd.DataFrame):
+                        st.dataframe(forecast.head(10))
+                    else:
+                        st.write(forecast)
                     
                     # Visualization
                     st.write("### Forecast Visualization:")
@@ -290,15 +313,30 @@ if get_data is not None:
                         line=dict(color='blue')
                     ))
                     
-                    # Forecast
-                    if 'pred_label' in forecast.columns:
-                        fig.add_trace(go.Scatter(
-                            x=forecast.index,
-                            y=forecast['pred_label'],
-                            mode='lines',
-                            name='Forecast',
-                            line=dict(color='red', dash='dash')
-                        ))
+                    # ایجاد پیش‌بینی برای آینده
+                    try:
+                        # دریافت داده‌های پیش‌بینی شده
+                        if isinstance(forecast, pd.DataFrame):
+                            # اگر پیش‌بینی‌ها در ستون pred_label هستند
+                            if 'pred_label' in forecast.columns:
+                                forecast_values = forecast['pred_label'].values
+                                # ایجاد تاریخ‌های آینده
+                                last_date = df_ts[date_column].iloc[-1]
+                                future_dates = pd.date_range(
+                                    start=last_date + pd.Timedelta(days=1),
+                                    periods=len(forecast_values),
+                                    freq=frequency
+                                )
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=future_dates,
+                                    y=forecast_values,
+                                    mode='lines+markers',
+                                    name='Forecast',
+                                    line=dict(color='red', dash='dash')
+                                ))
+                    except Exception as e:
+                        st.warning(f"Could not visualize forecast: {str(e)}")
                     
                     fig.update_layout(
                         title='Time Series Forecast',
@@ -310,13 +348,14 @@ if get_data is not None:
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Download results
-                    csv = forecast.to_csv()
-                    st.download_button(
-                        label="📥 Download Forecast",
-                        data=csv,
-                        file_name="forecast_results.csv",
-                        mime="text/csv"
-                    )
+                    if isinstance(forecast, pd.DataFrame):
+                        csv = forecast.to_csv()
+                        st.download_button(
+                            label="📥 Download Forecast",
+                            data=csv,
+                            file_name="forecast_results.csv",
+                            mime="text/csv"
+                        )
                     
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
